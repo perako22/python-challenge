@@ -1,86 +1,140 @@
 
-## Unit 5 | Assignment - The Power of Plots
+## Unit 7 | Assignment - Distinguishing Sentiments
 
-## Option 1: Pyber
+## Background
 
-The ride sharing bonanza continues! Seeing the success of notable players like Uber and Lyft, you've decided to join a fledgling ride sharing company of your own. In your latest capacity, you'll be acting as Chief Data Strategist for the company. In this role, you'll be expected to offer data-backed guidance on new opportunities for market differentiation.
+__Twitter__ has become a wildly sprawling jungle of information&mdash;140 characters at a time. Somewhere between 350 million and 500 million tweets are estimated to be sent out _per day_. With such an explosion of data, on Twitter and elsewhere, it becomes more important than ever to tame it in some way, to concisely capture the essence of the data.
 
-You've since been given access to the company's complete recordset of rides. This contains information about every active driver and historic ride, including details like city, driver count, individual fares, and city type.
+Choose __one__ of the following two assignments, in which you will do just that. Good luck!
 
-Your objective is to build a [Bubble Plot](https://en.wikipedia.org/wiki/Bubble_chart) that showcases the relationship between four key variables:
+## News Mood
 
-* Average Fare ($) Per City
-* Total Number of Rides Per City
-* Total Number of Drivers Per City
-* City Type (Urban, Suburban, Rural)
+In this assignment, you'll create a Python script to perform a sentiment analysis of the Twitter activity of various news oulets, and to present your findings visually.
 
-In addition, you will be expected to produce the following three pie charts:
+Your final output should provide a visualized summary of the sentiments expressed in Tweets sent out by the following news organizations: __BBC, CBS, CNN, Fox, and New York times__.
 
-* % of Total Fares by City Type
-* % of Total Rides by City Type
-* % of Total Drivers by City Type
+![output_10_0.png](output_10_0.png)
+
+![output_13_1.png](output_13_1.png)
+
+The first plot will be and/or feature the following:
+
+* Be a scatter plot of sentiments of the last __100__ tweets sent out by each news organization, ranging from -1.0 to 1.0, where a score of 0 expresses a neutral sentiment, -1 the most negative sentiment possible, and +1 the most positive sentiment possible.
+* Each plot point will reflect the _compound_ sentiment of a tweet.
+* Sort each plot point by its relative timestamp.
+
+The second plot will be a bar plot visualizing the _overall_ sentiments of the last 100 tweets from each organization. For this plot, you will again aggregate the compound sentiments analyzed by VADER.
+
+The tools of the trade you will need for your task as a data analyst include the following: tweepy, pandas, matplotlib, seaborn, textblob, and VADER.
+
+Your final Jupyter notebook must:
+
+* Pull last 100 tweets from each outlet.
+* Perform a sentiment analysis with the compound, positive, neutral, and negative scoring for each tweet. 
+* Pull into a DataFrame the tweet's source acount, its text, its date, and its compound, positive, neutral, and negative sentiment scores.
+* Export the data in the DataFrame into a CSV file.
+* Save PNG images for each plot.
 
 As final considerations:
 
-* You must use the Pandas Library and the Jupyter Notebook.
-* You must use the Matplotlib and Seaborn libraries.
-* You must include a written description of three observable trends based on the data.
-* You must use proper labeling of your plots, including aspects like: Plot Titles, Axes Labels, Legend Labels, Wedge Percentages, and Wedge Labels.
-* Remember when making your plots to consider aesthetics!
-  * You must stick to the Pyber color scheme (Gold, Light Sky Blue, and Light Coral) in producing your plot and pie charts.
-  * When making your Bubble Plot, experiment with effects like `alpha`, `edgecolor`, and `linewidths`.
-  * When making your Pie Chart, experiment with effects like `shadow`, `startangle`, and `explosion`.
-* You must include an exported markdown version of your Notebook called  `README.md` in your GitHub repository.
-* See [Example Solution](Pyber/Pyber_Example.pdf) for a reference on expected format.
+* Use the Matplotlib and Seaborn libraries.
+* Include a written description of three observable trends based on the data. 
+* Include proper labeling of your plots, including plot titles (with date of analysis) and axes labels.
+* Include an exported markdown version of your Notebook called  `README.md` in your GitHub repository.  
 
+
+Hints, requirements, and considerations:
+
+* Your bot should scan your account every __five minutes__ for mentions.
+* Your bot should pull 500 most recent tweets to analyze for each incoming request.
+* Your script should prevent abuse by analyzing __only__ Twitter accounts that have not previously been analyzed.
+* Your plot should include meaningful legend and labels.
+* It should also mention the Twitter account name of the requesting user.
+* When submitting your assignment, be sure to have at least __three__ analyses tweeted out from your account (enlist the help of classmates, friends, or family, if necessary!).
+* Notable libraries used to complete this application include: Matplotlib, Pandas, Tweepy, TextBlob, and Seaborn.
+* You may find it helpful to organize your code in function(s), then call them.
+* If you're not yet familiar with creating functions in Python, here is a tutorial you may wish to consult: [https://www.tutorialspoint.com/python/python_functions.htm](https://www.tutorialspoint.com/python/python_functions.htm).
 
 
 ```python
 # Dependencies
-import matplotlib.pyplot as plt
-import numpy as np
+import json
+import tweepy 
 import pandas as pd
-import random as random
+import numpy as np
+import matplotlib.pyplot as plt
 import seaborn as sns
+import csv
+import time
+
+# Initialize Sentiment Analyzer
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+analyzer = SentimentIntensityAnalyzer()
+
+# Twitter API Keys
+consumer_key = "DA2k1ReV2TXlW3eX16CeKij4U"
+consumer_secret = "xH9OkS7pQlZdXf5jDS6N1VPnZIVamGAqVf59PV5gHWqIGb77s7"
+access_token = "2196819717-1QvPl73C8pElfU5DgJNeZMdjwL0IUb75Y4fDwRV"
+access_token_secret = "2nbv1oIPXwIjysFlJGzUta7lci0aMkt9oygkJAzlWBKT9"
+
+# Setup Tweepy API Authentication
+auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
+auth.set_access_token(access_token, access_token_secret)
+api = tweepy.API(auth, parser=tweepy.parsers.JSONParser())
 ```
 
 
 ```python
-# Read csv
-# Store filepath in a variable
-pyber_city_data = "Pyber/raw_data/city_data.csv"
-pyber_ride_data = "Pyber/raw_data/ride_data.csv"
+# Target Accounts
+target_user1 = "@foxnews" #,"@msnbc","@cnn","@bbc","@nytimes"
 
-# Read our Data file with the pandas library
-pyber_city_df = pd.read_csv(pyber_city_data)
-pyber_ride_df = pd.read_csv(pyber_ride_data)
+# Counter
+counter = 1
 
-print(pyber_city_df.head())
-print(pyber_ride_df.head())
+# Variables for holding sentiments
+sentiments1 = []
 
-```
+# Loop through 5 pages of tweets (total 100 tweets)
+for x in range(5):
 
-                 city  driver_count   type
-    0      Kelseyland            63  Urban
-    1      Nguyenbury             8  Urban
-    2    East Douglas            12  Urban
-    3   West Dawnfurt            34  Urban
-    4  Rodriguezburgh            52  Urban
-              city                 date   fare        ride_id
-    0     Sarabury  2016-01-16 13:49:27  38.35  5403689035038
-    1    South Roy  2016-01-02 18:42:34  17.49  4036272335942
-    2  Wiseborough  2016-01-21 17:35:29  44.18  3645042422587
-    3  Spencertown  2016-07-31 14:53:22   6.87  2242596575892
-    4   Nguyenbury  2016-07-09 04:42:44   6.28  1543057793673
-    
+    # Get all tweets from home feed
+    public_tweets = api.user_timeline(target_user1)
 
+    # Loop through all tweets 
+    for tweet in public_tweets:
 
-```python
-# merge the two files
-combined_pyber_data_df = pd.merge(pyber_city_df, pyber_ride_df, how="outer", on=["city"])
+        # Print Tweets
+        # print("Tweet %s: %s" % (counter, tweet["text"]))
+        
+        # Run Vader Analysis on each tweet
+        compound = analyzer.polarity_scores(tweet["text"])["compound"]
+        pos = analyzer.polarity_scores(tweet["text"])["pos"]
+        neu = analyzer.polarity_scores(tweet["text"])["neu"]
+        neg = analyzer.polarity_scores(tweet["text"])["neg"]
+        tweets_ago = counter
+        name = "Fox News"
+        
+        # Add sentiments for each tweet into an array
+        sentiments1.append({"Media Source": name,
+                           "Date": tweet["created_at"], 
+                           "Compound": compound,
+                           "Positive": pos,
+                           "Negative": neu,
+                           "Neutral": neg,
+                           "Tweets Ago": counter})
+ 
+        # Add to counter 
+        counter = counter + 1
 
-# Show the header 
-combined_pyber_data_df.head()
+ #       # Print Analysis
+ #       print(f"Compound Score: {compound}")
+ #       print(f"Positive Score: {pos}")
+ #       print(f"Neutral Score: {neu}")
+ #       print(f"Negative Score: {neg}")
+
+# Convert sentiments to DataFrame
+sentiments1_pd = pd.DataFrame.from_dict(sentiments1)
+sentiments1_pd.head()
 ```
 
 
@@ -104,59 +158,65 @@ combined_pyber_data_df.head()
   <thead>
     <tr style="text-align: right;">
       <th></th>
-      <th>city</th>
-      <th>driver_count</th>
-      <th>type</th>
-      <th>date</th>
-      <th>fare</th>
-      <th>ride_id</th>
+      <th>Compound</th>
+      <th>Date</th>
+      <th>Media Source</th>
+      <th>Negative</th>
+      <th>Neutral</th>
+      <th>Positive</th>
+      <th>Tweets Ago</th>
     </tr>
   </thead>
   <tbody>
     <tr>
       <th>0</th>
-      <td>Kelseyland</td>
-      <td>63</td>
-      <td>Urban</td>
-      <td>2016-08-19 04:27:52</td>
-      <td>5.51</td>
-      <td>6246006544795</td>
+      <td>-0.5574</td>
+      <td>Tue Mar 20 20:54:42 +0000 2018</td>
+      <td>Fox News</td>
+      <td>0.833</td>
+      <td>0.167</td>
+      <td>0.000</td>
+      <td>1</td>
     </tr>
     <tr>
       <th>1</th>
-      <td>Kelseyland</td>
-      <td>63</td>
-      <td>Urban</td>
-      <td>2016-04-17 06:59:50</td>
-      <td>5.54</td>
-      <td>7466473222333</td>
+      <td>-0.2023</td>
+      <td>Tue Mar 20 20:44:34 +0000 2018</td>
+      <td>Fox News</td>
+      <td>0.859</td>
+      <td>0.141</td>
+      <td>0.000</td>
+      <td>2</td>
     </tr>
     <tr>
       <th>2</th>
-      <td>Kelseyland</td>
-      <td>63</td>
-      <td>Urban</td>
-      <td>2016-05-04 15:06:07</td>
-      <td>30.54</td>
-      <td>2140501382736</td>
+      <td>0.0000</td>
+      <td>Tue Mar 20 20:27:08 +0000 2018</td>
+      <td>Fox News</td>
+      <td>1.000</td>
+      <td>0.000</td>
+      <td>0.000</td>
+      <td>3</td>
     </tr>
     <tr>
       <th>3</th>
-      <td>Kelseyland</td>
-      <td>63</td>
-      <td>Urban</td>
-      <td>2016-01-25 20:44:56</td>
-      <td>12.08</td>
-      <td>1896987891309</td>
+      <td>-0.3400</td>
+      <td>Tue Mar 20 20:24:28 +0000 2018</td>
+      <td>Fox News</td>
+      <td>0.876</td>
+      <td>0.124</td>
+      <td>0.000</td>
+      <td>4</td>
     </tr>
     <tr>
       <th>4</th>
-      <td>Kelseyland</td>
-      <td>63</td>
-      <td>Urban</td>
-      <td>2016-08-09 18:19:47</td>
-      <td>17.91</td>
-      <td>8784212854829</td>
+      <td>-0.0772</td>
+      <td>Tue Mar 20 20:15:04 +0000 2018</td>
+      <td>Fox News</td>
+      <td>0.738</td>
+      <td>0.141</td>
+      <td>0.121</td>
+      <td>5</td>
     </tr>
   </tbody>
 </table>
@@ -166,8 +226,50 @@ combined_pyber_data_df.head()
 
 
 ```python
-# Describe the data
-combined_pyber_data_df.describe()
+# Target Accounts
+target_user2 = "@msnbc" #,"@cnn","@bbc","@nytimes"
+
+# Counter
+counter = 1
+
+# Variables for holding sentiments
+sentiments2 = []
+
+# Loop through 5 pages of tweets (total 100 tweets)
+for x in range(5):
+
+    # Get all tweets from home feed
+    public_tweets = api.user_timeline(target_user2)
+
+    # Loop through all tweets 
+    for tweet in public_tweets:
+
+        # Print Tweets
+        # print("Tweet %s: %s" % (counter, tweet["text"]))
+        
+        # Run Vader Analysis on each tweet
+        compound = analyzer.polarity_scores(tweet["text"])["compound"]
+        pos = analyzer.polarity_scores(tweet["text"])["pos"]
+        neu = analyzer.polarity_scores(tweet["text"])["neu"]
+        neg = analyzer.polarity_scores(tweet["text"])["neg"]
+        tweets_ago = counter
+        name = "MSNBC"
+        
+        # Add sentiments for each tweet into an array
+        sentiments2.append({"Media Source": name,
+                           "Date": tweet["created_at"], 
+                           "Compound": compound,
+                           "Positive": pos,
+                           "Negative": neu,
+                           "Neutral": neg,
+                           "Tweets Ago": counter})
+ 
+        # Add to counter 
+        counter = counter + 1
+ 
+# Convert sentiments to DataFrame
+sentiments2_pd = pd.DataFrame.from_dict(sentiments2)
+sentiments2_pd.head()
 ```
 
 
@@ -191,59 +293,65 @@ combined_pyber_data_df.describe()
   <thead>
     <tr style="text-align: right;">
       <th></th>
-      <th>driver_count</th>
-      <th>fare</th>
-      <th>ride_id</th>
+      <th>Compound</th>
+      <th>Date</th>
+      <th>Media Source</th>
+      <th>Negative</th>
+      <th>Neutral</th>
+      <th>Positive</th>
+      <th>Tweets Ago</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <th>count</th>
-      <td>2407.00000</td>
-      <td>2407.000000</td>
-      <td>2.407000e+03</td>
+      <th>0</th>
+      <td>0.1774</td>
+      <td>Tue Mar 20 20:41:11 +0000 2018</td>
+      <td>MSNBC</td>
+      <td>0.711</td>
+      <td>0.128</td>
+      <td>0.161</td>
+      <td>1</td>
     </tr>
     <tr>
-      <th>mean</th>
-      <td>31.14167</td>
-      <td>26.867104</td>
-      <td>4.856048e+12</td>
+      <th>1</th>
+      <td>-0.9403</td>
+      <td>Tue Mar 20 20:15:10 +0000 2018</td>
+      <td>MSNBC</td>
+      <td>0.505</td>
+      <td>0.495</td>
+      <td>0.000</td>
+      <td>2</td>
     </tr>
     <tr>
-      <th>std</th>
-      <td>22.05840</td>
-      <td>12.007238</td>
-      <td>2.898402e+12</td>
+      <th>2</th>
+      <td>-0.4767</td>
+      <td>Tue Mar 20 19:45:39 +0000 2018</td>
+      <td>MSNBC</td>
+      <td>0.846</td>
+      <td>0.154</td>
+      <td>0.000</td>
+      <td>3</td>
     </tr>
     <tr>
-      <th>min</th>
-      <td>1.00000</td>
-      <td>4.050000</td>
-      <td>2.238753e+09</td>
+      <th>3</th>
+      <td>-0.2023</td>
+      <td>Tue Mar 20 19:35:14 +0000 2018</td>
+      <td>MSNBC</td>
+      <td>0.762</td>
+      <td>0.138</td>
+      <td>0.100</td>
+      <td>4</td>
     </tr>
     <tr>
-      <th>25%</th>
-      <td>12.00000</td>
-      <td>17.320000</td>
-      <td>2.354637e+12</td>
-    </tr>
-    <tr>
-      <th>50%</th>
-      <td>24.00000</td>
-      <td>26.490000</td>
-      <td>4.804713e+12</td>
-    </tr>
-    <tr>
-      <th>75%</th>
-      <td>51.00000</td>
-      <td>36.710000</td>
-      <td>7.356325e+12</td>
-    </tr>
-    <tr>
-      <th>max</th>
-      <td>73.00000</td>
-      <td>59.650000</td>
-      <td>9.997901e+12</td>
+      <th>4</th>
+      <td>0.4939</td>
+      <td>Tue Mar 20 19:30:06 +0000 2018</td>
+      <td>MSNBC</td>
+      <td>0.758</td>
+      <td>0.000</td>
+      <td>0.242</td>
+      <td>5</td>
     </tr>
   </tbody>
 </table>
@@ -253,69 +361,50 @@ combined_pyber_data_df.describe()
 
 
 ```python
-# Average Fare ($) Per City
-ave_fare = combined_pyber_data_df.groupby("city").fare.mean()
-ave_fare.head()
-```
+# Target Accounts
+target_user3 = "@cnn" #,"@bbc","@nytimes"
 
+# Counter
+counter = 1
 
+# Variables for holding sentiments
+sentiments3 = []
 
+# Loop through 5 pages of tweets (total 100 tweets)
+for x in range(5):
 
-    city
-    Alvarezhaven    23.928710
-    Alyssaberg      20.609615
-    Anitamouth      37.315556
-    Antoniomouth    23.625000
-    Aprilchester    21.981579
-    Name: fare, dtype: float64
+    # Get all tweets from home feed
+    public_tweets = api.user_timeline(target_user3)
 
+    # Loop through all tweets 
+    for tweet in public_tweets:
 
-
-
-```python
-# Total Number of Rides Per City
-tot_rides = combined_pyber_data_df.groupby("city").ride_id.count()
-tot_rides.head()
-```
-
-
-
-
-    city
-    Alvarezhaven    31
-    Alyssaberg      26
-    Anitamouth       9
-    Antoniomouth    22
-    Aprilchester    19
-    Name: ride_id, dtype: int64
-
-
-
-
-```python
-# Total Number of Drivers Per City
-tot_drivers = combined_pyber_data_df.groupby("city").driver_count.sum()
-tot_drivers.head(5)
-```
-
-
-
-
-    city
-    Alvarezhaven     651
-    Alyssaberg      1742
-    Anitamouth       144
-    Antoniomouth     462
-    Aprilchester     931
-    Name: driver_count, dtype: int64
-
-
-
-
-```python
-# City Type (Urban, Suburban, Rural)
-cit_type = combined_pyber_data_df.groupby("type").sum()
-cit_type.head(5)
+        # Print Tweets
+        # print("Tweet %s: %s" % (counter, tweet["text"]))
+        
+        # Run Vader Analysis on each tweet
+        compound = analyzer.polarity_scores(tweet["text"])["compound"]
+        pos = analyzer.polarity_scores(tweet["text"])["pos"]
+        neu = analyzer.polarity_scores(tweet["text"])["neu"]
+        neg = analyzer.polarity_scores(tweet["text"])["neg"]
+        tweets_ago = counter
+        name = "CNN"
+        
+        # Add sentiments for each tweet into an array
+        sentiments3.append({"Media Source": name,
+                           "Date": tweet["created_at"], 
+                           "Compound": compound,
+                           "Positive": pos,
+                           "Negative": neu,
+                           "Neutral": neg,
+                           "Tweets Ago": counter})
+ 
+        # Add to counter 
+        counter = counter + 1
+ 
+# Convert sentiments to DataFrame
+sentiments3_pd = pd.DataFrame.from_dict(sentiments3)
+sentiments3_pd.head()
 ```
 
 
@@ -339,35 +428,65 @@ cit_type.head(5)
   <thead>
     <tr style="text-align: right;">
       <th></th>
-      <th>driver_count</th>
-      <th>fare</th>
-      <th>ride_id</th>
-    </tr>
-    <tr>
-      <th>type</th>
-      <th></th>
-      <th></th>
-      <th></th>
+      <th>Compound</th>
+      <th>Date</th>
+      <th>Media Source</th>
+      <th>Negative</th>
+      <th>Neutral</th>
+      <th>Positive</th>
+      <th>Tweets Ago</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <th>Rural</th>
-      <td>727</td>
-      <td>4255.09</td>
-      <td>658729360193746</td>
+      <th>0</th>
+      <td>0.6369</td>
+      <td>Tue Mar 20 20:51:53 +0000 2018</td>
+      <td>CNN</td>
+      <td>0.743</td>
+      <td>0.0</td>
+      <td>0.257</td>
+      <td>1</td>
     </tr>
     <tr>
-      <th>Suburban</th>
-      <td>9730</td>
-      <td>20335.69</td>
-      <td>3139583688401015</td>
+      <th>1</th>
+      <td>0.5859</td>
+      <td>Tue Mar 20 20:47:13 +0000 2018</td>
+      <td>CNN</td>
+      <td>0.817</td>
+      <td>0.0</td>
+      <td>0.183</td>
+      <td>2</td>
     </tr>
     <tr>
-      <th>Urban</th>
-      <td>64501</td>
-      <td>40078.34</td>
-      <td>7890194186030600</td>
+      <th>2</th>
+      <td>0.5267</td>
+      <td>Tue Mar 20 20:46:28 +0000 2018</td>
+      <td>CNN</td>
+      <td>0.793</td>
+      <td>0.0</td>
+      <td>0.207</td>
+      <td>3</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>0.0000</td>
+      <td>Tue Mar 20 20:36:25 +0000 2018</td>
+      <td>CNN</td>
+      <td>1.000</td>
+      <td>0.0</td>
+      <td>0.000</td>
+      <td>4</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>0.0000</td>
+      <td>Tue Mar 20 20:31:36 +0000 2018</td>
+      <td>CNN</td>
+      <td>1.000</td>
+      <td>0.0</td>
+      <td>0.000</td>
+      <td>5</td>
     </tr>
   </tbody>
 </table>
@@ -377,22 +496,416 @@ cit_type.head(5)
 
 
 ```python
-# Build bubble chart
+# Target Accounts
+target_user4 = "@bbc"
 
-# create data
-tot_rides = np.random.rand(15)
-y = tot_rides+np.random.rand(15)
-z = tot_rides+np.random.rand(15)
-z = z*z
+# Counter
+counter = 1
 
-# Change color with c and alpha. I map the color to the X axis value.
-plt.scatter(tot_rides, y, s=z*2500, c=z, cmap="Reds", alpha=0.7, edgecolors="grey", linewidth=1)
+# Variables for holding sentiments
+sentiments4 = []
 
-# Add labels
-plt.title("Pyber KPIs by City")
-plt.xlabel("Total Rides")
-plt.ylabel("Total Drivers")
+# Loop through 5 pages of tweets (total 100 tweets)
+for x in range(5):
 
+    # Get all tweets from home feed
+    public_tweets = api.user_timeline(target_user4)
+
+    # Loop through all tweets 
+    for tweet in public_tweets:
+
+        # Print Tweets
+        # print("Tweet %s: %s" % (counter, tweet["text"]))
+        
+        # Run Vader Analysis on each tweet
+        compound = analyzer.polarity_scores(tweet["text"])["compound"]
+        pos = analyzer.polarity_scores(tweet["text"])["pos"]
+        neu = analyzer.polarity_scores(tweet["text"])["neu"]
+        neg = analyzer.polarity_scores(tweet["text"])["neg"]
+        tweets_ago = counter
+        name = "BBC"
+        
+        # Add sentiments for each tweet into an array
+        sentiments4.append({"Media Source": name,
+                           "Date": tweet["created_at"], 
+                           "Compound": compound,
+                           "Positive": pos,
+                           "Negative": neu,
+                           "Neutral": neg,
+                           "Tweets Ago": counter})# Target Accounts
+ 
+        # Add to counter 
+        counter = counter + 1
+ 
+# Convert sentiments to DataFrame
+sentiments4_pd = pd.DataFrame.from_dict(sentiments4)
+sentiments4_pd.head()
+```
+
+
+
+
+<div>
+<style>
+    .dataframe thead tr:only-child th {
+        text-align: right;
+    }
+
+    .dataframe thead th {
+        text-align: left;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Compound</th>
+      <th>Date</th>
+      <th>Media Source</th>
+      <th>Negative</th>
+      <th>Neutral</th>
+      <th>Positive</th>
+      <th>Tweets Ago</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>0.0000</td>
+      <td>Tue Mar 20 19:48:04 +0000 2018</td>
+      <td>BBC</td>
+      <td>1.000</td>
+      <td>0.000</td>
+      <td>0.000</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>0.0000</td>
+      <td>Tue Mar 20 19:03:04 +0000 2018</td>
+      <td>BBC</td>
+      <td>1.000</td>
+      <td>0.000</td>
+      <td>0.000</td>
+      <td>2</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>-0.3859</td>
+      <td>Tue Mar 20 18:33:01 +0000 2018</td>
+      <td>BBC</td>
+      <td>0.768</td>
+      <td>0.160</td>
+      <td>0.071</td>
+      <td>3</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>0.3400</td>
+      <td>Tue Mar 20 17:33:03 +0000 2018</td>
+      <td>BBC</td>
+      <td>0.738</td>
+      <td>0.102</td>
+      <td>0.160</td>
+      <td>4</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>0.0000</td>
+      <td>Tue Mar 20 17:03:01 +0000 2018</td>
+      <td>BBC</td>
+      <td>1.000</td>
+      <td>0.000</td>
+      <td>0.000</td>
+      <td>5</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+
+```python
+# Target Accounts
+target_user5 = "@nytimes"
+
+# Counter
+counter = 1
+
+# Variables for holding sentiments
+sentiments5 = []
+
+# Loop through 5 pages of tweets (total 100 tweets)
+for x in range(5):
+
+    # Get all tweets from home feed
+    public_tweets = api.user_timeline(target_user5)
+
+    # Loop through all tweets 
+    for tweet in public_tweets:
+
+        # Print Tweets
+        # print("Tweet %s: %s" % (counter, tweet["text"]))
+        
+        # Run Vader Analysis on each tweet
+        compound = analyzer.polarity_scores(tweet["text"])["compound"]
+        pos = analyzer.polarity_scores(tweet["text"])["pos"]
+        neu = analyzer.polarity_scores(tweet["text"])["neu"]
+        neg = analyzer.polarity_scores(tweet["text"])["neg"]
+        tweets_ago = counter
+        name = "NYTimes"
+        
+        # Add sentiments for each tweet into an array
+        sentiments5.append({"Media Source": name,
+                           "Date": tweet["created_at"], 
+                           "Compound": compound,
+                           "Positive": pos,
+                           "Negative": neu,
+                           "Neutral": neg,
+                           "Tweets Ago": counter})
+ 
+        # Add to counter 
+        counter = counter + 1
+ 
+# Convert sentiments to DataFrame
+sentiments5_pd = pd.DataFrame.from_dict(sentiments5)
+sentiments5_pd.head()
+```
+
+
+
+
+<div>
+<style>
+    .dataframe thead tr:only-child th {
+        text-align: right;
+    }
+
+    .dataframe thead th {
+        text-align: left;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Compound</th>
+      <th>Date</th>
+      <th>Media Source</th>
+      <th>Negative</th>
+      <th>Neutral</th>
+      <th>Positive</th>
+      <th>Tweets Ago</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>0.0000</td>
+      <td>Tue Mar 20 20:55:09 +0000 2018</td>
+      <td>NYTimes</td>
+      <td>1.000</td>
+      <td>0.000</td>
+      <td>0.000</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>0.1779</td>
+      <td>Tue Mar 20 20:40:07 +0000 2018</td>
+      <td>NYTimes</td>
+      <td>0.914</td>
+      <td>0.000</td>
+      <td>0.086</td>
+      <td>2</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>-0.5574</td>
+      <td>Tue Mar 20 20:25:03 +0000 2018</td>
+      <td>NYTimes</td>
+      <td>0.825</td>
+      <td>0.175</td>
+      <td>0.000</td>
+      <td>3</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>-0.7269</td>
+      <td>Tue Mar 20 20:18:08 +0000 2018</td>
+      <td>NYTimes</td>
+      <td>0.757</td>
+      <td>0.243</td>
+      <td>0.000</td>
+      <td>4</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>0.0000</td>
+      <td>Tue Mar 20 20:08:04 +0000 2018</td>
+      <td>NYTimes</td>
+      <td>1.000</td>
+      <td>0.000</td>
+      <td>0.000</td>
+      <td>5</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+
+```python
+# Merge dataframes
+sentiments12_pd = pd.merge(sentiments1_pd, sentiments2_pd, how="outer", on=None)
+
+sentiments123_pd = pd.merge(sentiments12_pd, sentiments3_pd, how="outer", on=None)
+
+sentiments1234_pd = pd.merge(sentiments123_pd, sentiments4_pd, how="outer", on=None)
+
+combined_sentiments_pd = pd.merge(sentiments1234_pd, sentiments5_pd, how="outer", on=None)
+
+combined_sentiments_pd.head()
+```
+
+
+
+
+<div>
+<style>
+    .dataframe thead tr:only-child th {
+        text-align: right;
+    }
+
+    .dataframe thead th {
+        text-align: left;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Compound</th>
+      <th>Date</th>
+      <th>Media Source</th>
+      <th>Negative</th>
+      <th>Neutral</th>
+      <th>Positive</th>
+      <th>Tweets Ago</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>-0.5574</td>
+      <td>Tue Mar 20 20:54:42 +0000 2018</td>
+      <td>Fox News</td>
+      <td>0.833</td>
+      <td>0.167</td>
+      <td>0.000</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>-0.2023</td>
+      <td>Tue Mar 20 20:44:34 +0000 2018</td>
+      <td>Fox News</td>
+      <td>0.859</td>
+      <td>0.141</td>
+      <td>0.000</td>
+      <td>2</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>0.0000</td>
+      <td>Tue Mar 20 20:27:08 +0000 2018</td>
+      <td>Fox News</td>
+      <td>1.000</td>
+      <td>0.000</td>
+      <td>0.000</td>
+      <td>3</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>-0.3400</td>
+      <td>Tue Mar 20 20:24:28 +0000 2018</td>
+      <td>Fox News</td>
+      <td>0.876</td>
+      <td>0.124</td>
+      <td>0.000</td>
+      <td>4</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>-0.0772</td>
+      <td>Tue Mar 20 20:15:04 +0000 2018</td>
+      <td>Fox News</td>
+      <td>0.738</td>
+      <td>0.141</td>
+      <td>0.121</td>
+      <td>5</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+
+```python
+target_users = "Fox News", "MSNBC", "CNN","BBC", "NYTimes"
+
+# Create plot
+plt.plot(np.arange(len(combined_sentiments_pd["Compound"])),
+         combined_sentiments_pd["Compound"], marker="o", linewidth=0,
+         alpha=0.8)
+
+# # Incorporate the other graph properties
+plt.title("Sentiment Analysis for Media Sources (%s) for %s" % (time.strftime("%x"),target_users))
+plt.ylabel("Tweet Polarity")
+plt.xlabel("Tweets Ago")
+plt.legend ("Media Sources")
+plt.show()
+```
+
+
+![png](output_8_0.png)
+
+
+
+```python
+# Set x axis and tick locations
+x_axis = np.arange(len(combined_sentiments_pd))
+tick_locations = [value+0.4 for value in x_axis]
+
+# Create a list indicating where to write x labels and set figure size to adjust for space
+plt.figure(figsize=(20,3))
+plt.bar(x_axis, combined_sentiments_pd["Compound"], color='r', alpha=0.5, align="edge")
+plt.xticks(tick_locations, combined_sentiments_pd["Media Source"], rotation="vertical")
+
+# Set x and y limits
+plt.xlim(-0.25, len(x_axis))
+plt.ylim(0, max(combined_sentiments_pd["Compound"])+1)
+
+# # Incorporate the other graph properties
+plt.title("Overall Media Alignment Based on Twitter (%s) for %s" % (time.strftime("%x"),target_users))
+plt.ylabel("Tweet Polarity")
+plt.xlabel("Media Source")
+plt.legend ("Media Sources")
 plt.show()
 ```
 
@@ -402,160 +915,43 @@ plt.show()
 
 
 ```python
-# Total Fares ($) by City Type
-fare_ctype = combined_pyber_data_df.groupby("type").fare.sum()
-fare_ctype.head(5)
+# Export the new CSV
+combined_sentiments_pd.to_csv("output/sentiments_df.csv", index=False)
 ```
 
 
+    ---------------------------------------------------------------------------
 
+    FileNotFoundError                         Traceback (most recent call last)
 
-    type
-    Rural        4255.09
-    Suburban    20335.69
-    Urban       40078.34
-    Name: fare, dtype: float64
-
-
-
-
-```python
-# % of Total Fares by City Type
-
-#custom
-labels = ["Urban","Suburban","Rural"]
-shares = ["40078.34", "2033.69", "4255.09"]
-
-# New Figure
-fig = plt.figure(figsize=(4,4),frameon=True,facecolor="lightgreen")
-
-# New Axes
-ax = fig.add_subplot(1,1,1)
-
-# Plot the data
-ax.pie(shares,explode=(0,0.1,0),labels=labels,
-       colors=["gold","lightskyblue","lightcoral"],
-       autopct='%.0f%%',shadow=True,radius=0.5,counterclock=True,startangle=400)
-
-ax.set(title="% Total Fares by City Type")
-
-# Fit the plot layout
-plt.axis("equal")
-
-# Show the plot
-plt.show()
-
-```
-
-
-![png](output_11_0.png)
-
-
-
-```python
-# Total Rides by City Type
-ride_ctype = combined_pyber_data_df.groupby("type").ride_id.count()
-ride_ctype.head(5)
-```
-
-
-
-
-    type
-    Rural        125
-    Suburban     657
-    Urban       1625
-    Name: ride_id, dtype: int64
-
-
-
-
-```python
-# % of Total Rides by City Type
-
-#custom
-labels = ["Urban","Suburban","Rural"]
-shares = ["1625", "657", "125"]
-
-# New Figure
-fig = plt.figure(figsize=(4,4),frameon=True,facecolor="lightgreen")
-
-# New Axes
-ax = fig.add_subplot(1,1,1)
-
-# Plot the data
-ax.pie(shares,explode=(0,0,0.1),labels=labels,
-       colors=["gold","lightskyblue","lightcoral"],
-       autopct='%.0f%%',shadow=True,radius=0.5,counterclock=True,startangle=380)
-
-ax.set(title="% Total Rides by City Type")
-
-# Fit the plot layout
-plt.axis("equal")
-
-# Show the plot
-plt.show()
-```
-
-
-![png](output_13_0.png)
-
-
-
-```python
-# Total Drivers by City Type
-driver_ctype = combined_pyber_data_df.groupby("type").driver_count.sum()
-driver_ctype.head(5)
-```
-
-
-
-
-    type
-    Rural         727
-    Suburban     9730
-    Urban       64501
-    Name: driver_count, dtype: int64
-
-
-
-
-```python
-# % of Total Drivers by City Type
-
-#custom
-labels = ["Urban","Suburban","Rural"]
-shares = ["64501", "9730", "727"]
-
-# New Figure
-fig = plt.figure(figsize=(4,4),frameon=True,facecolor="lightgreen")
-
-# New Axes
-ax = fig.add_subplot(1,1,1)
-
-# Plot the data
-ax.pie(shares,explode=(0,0,0.1),labels=labels,
-       colors=["gold","lightskyblue","lightcoral"],
-       autopct='%.0f%%',shadow=True,radius=0.5,counterclock=False,startangle=350)
-
-ax.set(title="% Total Drivers by City Type")
-
-# Fit the plot layout
-plt.axis("equal")
-
-# Show the plot
-plt.show()
-```
-
-
-![png](output_15_0.png)
-
-
- # Three observable trends about the data.
+    <ipython-input-128-ea5baed29708> in <module>()
+          1 # Export the new CSV
+    ----> 2 combined_sentiments_pd.to_csv("output/sentiments_df.csv", index=False)
     
-    1. Anitamouth has the highest average fare of all the cities. 
-    2. Urban city type has the most number of drivers while Rural city type has the least. 
-    3. By % total, Suburban city type account for the lowest share. This matches conventional thinking that
-       suburbanites are more likely to drive their own cars to urban centers while city dwellers and rural folks 
-       would deem it more practical to ride public transportation.
+
+    ~\Anaconda3\lib\site-packages\pandas\core\frame.py in to_csv(self, path_or_buf, sep, na_rep, float_format, columns, header, index, index_label, mode, encoding, compression, quoting, quotechar, line_terminator, chunksize, tupleize_cols, date_format, doublequote, escapechar, decimal)
+       1401                                      doublequote=doublequote,
+       1402                                      escapechar=escapechar, decimal=decimal)
+    -> 1403         formatter.save()
+       1404 
+       1405         if path_or_buf is None:
     
+
+    ~\Anaconda3\lib\site-packages\pandas\io\formats\format.py in save(self)
+       1575             f, handles = _get_handle(self.path_or_buf, self.mode,
+       1576                                      encoding=self.encoding,
+    -> 1577                                      compression=self.compression)
+       1578             close = True
+       1579 
+    
+
+    ~\Anaconda3\lib\site-packages\pandas\io\common.py in _get_handle(path_or_buf, mode, encoding, compression, memory_map, is_text)
+        383         elif is_text:
+        384             # Python 3 and no explicit encoding
+    --> 385             f = open(path_or_buf, mode, errors='replace')
+        386         else:
+        387             # Python 3 and binary mode
+    
+
+    FileNotFoundError: [Errno 2] No such file or directory: 'output/sentiments_df.csv'
+
